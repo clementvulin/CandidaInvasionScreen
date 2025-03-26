@@ -91,10 +91,73 @@ set(gca, 'TickDir','out', 'FontSize',20, 'Box','off','LineWidth',2)
 
 xline(0.6, 'LineWidth',2)
 
+%% create correlation map for the 0.6 threshold:
+
+% Compute clusters
+corrThreshold = 0.6;  
+distThreshold = 1 - corrThreshold;  
+clusters = cluster(Z, 'cutoff', distThreshold, 'criterion', 'distance');
+numClusters = numel(unique(clusters));
+
+% Select Representative Variables
+selectedVars = [];
+for i = 1:numClusters
+    clusterVars = find(clusters == i);  
+    avgCorr = mean(abs(corrMatrix(clusterVars, clusterVars)), 2); 
+    [~, bestVarIdx] = max(avgCorr); 
+    selectedVars = [selectedVars; clusterVars(bestVarIdx)];
+end
+selectedVars = find(ismember(order, selectedVars)); % Adjust for reordering
+
+% Define the custom colormap with white at 0.6
+nBlue = 80;  % Number of steps from -1 to 0.6
+nRed = 20;   % Number of steps from 0.6 to 1
+% Blue to White (for -1 to 0.6)
+blueToWhite = [linspace(0,1,nBlue)', linspace(0,1,nBlue)', ones(nBlue,1)];
+% White to Red (for 0.6 to 1)
+whiteToRed = [ones(nRed,1), linspace(1,0,nRed)', linspace(1,0,nRed)'];
+% Combine both parts
+cmap = [blueToWhite; whiteToRed];
+
+% Plot Heatmap
+figure;
+imagesc(reorderedCorr, [-1 1]); % Set color scale from -1 to 1
+colormap(cmap);
+colorbar;
+title('Correlation Matrix Heatmap');
+hold on;
+caxis([-1 1]); % Ensures correct color mapping
+set(gca, 'TickDir','out', 'FontSize',20, 'Box','off','LineWidth',2)
+
+% Add Stars Above Selected Variables
+for i = 1:length(selectedVars)
+    text(selectedVars(i), 0, '*', 'FontSize', 14, 'Color', 'k', 'HorizontalAlignment', 'center');
+end
+
+% Draw Cluster Separation Lines
+hold on;
+edges = find(diff(clusters(order)) ~= 0); % Find boundaries between clusters
+for i = 1:length(edges)
+    x = edges(i) + 0.5; % Line position
+    y = size(reorderedCorr, 1) + 0.5; 
+    plot([x, x], [0.5, y], 'k-', 'LineWidth', 1.5); % Vertical line
+    plot([0.5, y], [x, x], 'k-', 'LineWidth', 1.5); % Horizontal line
+end
+
+% Adjust Axes
+xticks(1:length(order));
+yticks(1:length(order));
+xticklabels(order);
+yticklabels(order);
+axis square;
+hold off;
+
+
+
 %% Select Representative Variables from Each Cluster
 
 
-corrThreshold = 0.5;  % Set correlation cutoff
+corrThreshold = 0.6;  % Set correlation cutoff
 distThreshold = 1 - corrThreshold;  % Convert correlation to distance
 
 % Cut the dendrogram at the corresponding distance
